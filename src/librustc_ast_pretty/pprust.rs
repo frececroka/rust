@@ -9,7 +9,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{IsJoint, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
@@ -703,11 +703,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.trees().peekable();
-        while let Some(tt) = iter.next() {
+        let mut iter = tts.0.iter().peekable();
+        while let Some((tt, is_joint)) = iter.next() {
             self.print_tt(&tt, convert_dollar_crate);
-            if let Some(next) = iter.peek() {
-                if tt_prepend_space(next, &tt) {
+            if let IsJoint::Joint = is_joint {
+                // Do not insert a space.
+            } else if let Some((next_tt, _)) = iter.peek() {
+                if tt_prepend_space(next_tt, &tt) {
                     self.space();
                 }
             }
